@@ -1,0 +1,66 @@
+indicator('test', overlay=true, precision=6, max_lines_count=500, max_bars_back=4900, max_boxes_count=500)
+//@version=5
+
+semafor = input(true, 'Test Zigzag', group = "Trend settings", tooltip="")
+repaint = "false"
+
+zigzag(Depth, Deviation, Color1, Color2, Size, Type) =>
+    var lw = 1
+    var hg = 1
+    lw += 1
+    hg += 1
+    p_lw = -ta.lowestbars(Depth)
+    p_hg = -ta.highestbars(Depth)
+    lowing = lw == p_lw or low - low[p_lw] > Deviation * syminfo.mintick
+    highing = hg == p_hg or high[p_hg] - high > Deviation * syminfo.mintick
+    lh = ta.barssince(not highing)
+    ll = ta.barssince(not lowing)
+    down = lh > ll
+    lower = low[lw] > low[p_lw]
+    higher = high[hg] < high[p_hg]
+    if lw != p_lw and (not down[1] or lower)
+        lw := p_lw < hg ? p_lw : 0
+        lw
+    if hg != p_hg and (down[1] or higher)
+        hg := p_hg < lw ? p_hg : 0
+        hg
+    x1 = down ? lw : hg
+    y1 = down ? low[lw] : high[hg]
+    lb = down ? label.style_label_up : label.style_label_down
+    label point = na
+    colorSwitch = down ? (down ? Color1 : Color2) : na
+    if down != down[1]
+        nx = down ? hg : lw
+        colorSwitch := down ? Color2 : Color1
+        point := label.new(bar_index - nx, down ? high[nx] : low[nx], color=colorSwitch, style=label.style_diamond, size=Size)
+        point
+    [down != down[1], down]
+
+switchLarge = false
+downLarge = false
+switchMedium = false
+downMedium = false
+switchSmall = false
+downSmall = false
+
+if semafor 
+    [swing, down] = zigzag(150, 24.0, color.rgb(65, 255, 239, 45), color.rgb(255, 71, 230, 45), size.normal, 'Large')
+    switchLarge := swing or switchLarge
+    downLarge := down
+
+if semafor
+    [swing, down] = zigzag(34, 6.0, color.rgb(65, 255, 255, 45), color.rgb(255, 65, 198, 45), size.small, 'Medium')
+    switchMedium := swing or switchMedium
+    downMedium := down
+
+if semafor
+    [swing, down] = zigzag(9, 3.0, color.rgb(62, 255, 207, 45), color.rgb(255, 64, 169, 45), size.tiny, 'Small')
+    switchSmall := swing or switchSmall
+    downSmall := down
+
+alertcondition(switchLarge and not downLarge, 'Large Swing Low', 'Large Swing Low')
+alertcondition(switchLarge and downLarge, 'Large Swing High', 'Large Swing High')
+alertcondition(switchMedium and not downMedium, 'Medium Swing Low', 'Medium Swing Low')
+alertcondition(switchMedium and downMedium, 'Medium Swing High', 'Medium Swing High')
+alertcondition(switchSmall and not downSmall, 'Small Swing Low', 'Small Swing Low')
+alertcondition(switchSmall and downSmall, 'Small Swing High', 'Small Swing High')
